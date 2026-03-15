@@ -29,7 +29,7 @@ cd pane
 
 ```bash
 xcodegen generate
-xcodebuild build -scheme Pane -destination 'platform=macOS'
+xcodebuild build -scheme Pane -destination 'platform=macOS' CODE_SIGN_IDENTITY="-"
 ```
 
 Open `Pane.xcodeproj` in Xcode once to set your Team ID under Signing & Capabilities.
