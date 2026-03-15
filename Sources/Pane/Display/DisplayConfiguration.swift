@@ -1,0 +1,56 @@
+import Foundation
+
+/// Model representing a saved display arrangement configuration.
+struct DisplayConfiguration: Codable, Sendable {
+
+    enum Mode: String, Codable, Sendable {
+        case extend
+        case mirror
+    }
+
+    enum ExtendPreset: String, Codable, CaseIterable, Sendable {
+        case externalRight
+        case externalLeft
+        case externalAbove
+    }
+
+    enum MirrorTarget: String, Codable, CaseIterable, Sendable {
+        case macBook
+        case external
+    }
+
+    var mode: Mode
+    var extendPreset: ExtendPreset
+    var mirrorTarget: MirrorTarget
+    var rememberThisDisplay: Bool
+}
+
+// MARK: - Display-friendly labels
+
+extension DisplayConfiguration.ExtendPreset {
+    var displayName: String {
+        switch self {
+        case .externalRight: "Right"
+        case .externalLeft: "Left"
+        case .externalAbove: "Above"
+        }
+    }
+}
+
+extension DisplayConfiguration.MirrorTarget {
+    var displayName: String {
+        switch self {
+        case .macBook: "Optimise for MacBook"
+        case .external: "Optimise for external"
+        }
+    }
+}
+
+extension DisplayConfiguration.Mode {
+    var displayName: String {
+        switch self {
+        case .extend: "Extend"
+        case .mirror: "Mirror"
+        }
+    }
+}

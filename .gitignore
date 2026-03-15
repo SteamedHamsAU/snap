@@ -1,0 +1,19 @@
+# Generated — do not commit
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+.build/
+.swiftpm/
+
+# Secrets
+Config/Secrets.xcconfig
+
+# macOS
+.DS_Store
+*.app
+*.dSYM.zip
+*.dSYM
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate

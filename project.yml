@@ -1,0 +1,61 @@
+name: Pane
+options:
+  bundleIdPrefix: au.steamedhams
+  deploymentTarget:
+    macOS: "15.0"
+  swiftVersion: "6.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: YOUR_TEAM_ID
+    MARKETING_VERSION: 1.0.0
+    CURRENT_PROJECT_VERSION: 1
+    ARCHS: "arm64 x86_64"
+    CODE_SIGN_STYLE: Manual
+
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.0.0"
+
+targets:
+  Pane:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/Pane
+    resources:
+      - path: Resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.steamedhams.pane
+        INFOPLIST_FILE: Sources/Pane/App/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        COMBINE_HIDPI_IMAGES: true
+    entitlements:
+      path: Config/Pane.entitlements
+    dependencies:
+      - package: Sparkle
+
+  PaneTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/PaneTests
+    dependencies:
+      - target: Pane
+
+schemes:
+  Pane:
+    build:
+      targets:
+        Pane: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - PaneTests
