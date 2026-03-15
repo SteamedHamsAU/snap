@@ -52,7 +52,8 @@ final class PromptWindowController {
         panel.isReleasedWhenClosed = false
 
         // Centre on the connected display or main screen
-        if let screen = screenForDisplay(displayID) ?? NSScreen.main {
+        // Always show on the built-in display (MacBook screen), not the newly connected external
+        if let screen = builtInScreen() ?? NSScreen.main {
             let screenFrame = screen.visibleFrame
             let panelSize = panel.frame.size
             let x = screenFrame.midX - panelSize.width / 2
@@ -75,6 +76,16 @@ final class PromptWindowController {
         NSScreen.screens.first { screen in
             let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             return screenNumber == displayID
+        }
+    }
+
+    /// Find the built-in MacBook display.
+    private func builtInScreen() -> NSScreen? {
+        NSScreen.screens.first { screen in
+            guard let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID else {
+                return false
+            }
+            return CGDisplayIsBuiltin(screenNumber) != 0
         }
     }
 }
