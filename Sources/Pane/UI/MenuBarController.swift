@@ -9,6 +9,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private var currentDisplay: ConnectedDisplay?
     var onRetriggerPrompt: (() -> Void)?
     var onOpenSettings: (() -> Void)?
+    var onTestNotification: (() -> Void)?
 
     init(configStore: DisplayConfigStore) {
         self.configStore = configStore
@@ -59,6 +60,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         retrigger.isEnabled = currentDisplay != nil
         menu.addItem(retrigger)
 
+        let testNotif = NSMenuItem(title: "Test notification", action: #selector(testNotification), keyEquivalent: "")
+        testNotif.target = self
+        menu.addItem(testNotif)
+
         menu.addItem(.separator())
 
         // Remembered displays submenu
@@ -92,6 +97,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func retriggerPrompt() {
         onRetriggerPrompt?()
+    }
+
+    @objc private func testNotification() {
+        onTestNotification?()
     }
 
     @objc private func quitApp() {

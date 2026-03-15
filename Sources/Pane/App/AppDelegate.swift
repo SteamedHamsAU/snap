@@ -30,6 +30,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.onRetriggerPrompt = { [weak self] in
             self?.retriggerPrompt()
         }
+        menuBar.onTestNotification = { [weak self] in
+            self?.toastController?.show(
+                message: "External Display — extend right applied",
+                onChangeTapped: {
+                    Self.logger.notice("Change tapped from test notification")
+                }
+            )
+        }
         menuBar.setup()
         menuBarController = menuBar
 
