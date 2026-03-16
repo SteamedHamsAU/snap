@@ -140,17 +140,20 @@ extension AppDelegate: DisplayMonitorDelegate {
 
             // Show toast after a brief delay — the display reconfiguration
             // invalidates screen geometry, so we wait for it to settle
-            let toastMessage = "\(name) — \(modeLabel) applied"
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .seconds(1.5))
-                Self.logger.notice("Showing toast: \(toastMessage)")
-                self?.toastController?.show(
-                    message: toastMessage,
-                    onChangeTapped: { [weak self] in
-                        self?.toastController?.dismiss()
-                        self?.showPrompt(displayID: id, uuid: uuid, name: name, resolution: resolution)
-                    }
-                )
+            let showToast = UserDefaults.standard.object(forKey: "showToastOnKnownDisplay") as? Bool ?? true
+            if showToast {
+                let toastMessage = "\(name) — \(modeLabel) applied"
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(for: .seconds(1.5))
+                    Self.logger.notice("Showing toast: \(toastMessage)")
+                    self?.toastController?.show(
+                        message: toastMessage,
+                        onChangeTapped: { [weak self] in
+                            self?.toastController?.dismiss()
+                            self?.showPrompt(displayID: id, uuid: uuid, name: name, resolution: resolution)
+                        }
+                    )
+                }
             }
         } else {
             // Unknown display — show prompt
