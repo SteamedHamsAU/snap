@@ -4,7 +4,6 @@ import UserNotifications
 /// Shows native macOS notifications for known-display auto-apply events.
 @MainActor
 final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
-
     private var onChangeTapped: (() -> Void)?
     private static let categoryID = "DISPLAY_APPLIED"
     private static let changeActionID = "CHANGE_ACTION"
@@ -36,7 +35,7 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
 
     func show(
         message: String,
-        duration: TimeInterval = 4,
+        duration _: TimeInterval = 4,
         onChangeTapped: @escaping () -> Void
     ) {
         self.onChangeTapped = onChangeTapped
@@ -64,17 +63,17 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
     }
 
-    // Show banner even when app is in foreground
+    /// Show banner even when app is in foreground
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
+        _: UNUserNotificationCenter,
+        willPresent _: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .sound]
     }
 
-    // Handle "Change" action
+    /// Handle "Change" action
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
+        _: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
         if response.actionIdentifier == Self.changeActionID {

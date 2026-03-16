@@ -3,7 +3,6 @@ import AppKit
 /// Manages the menu bar status item and its dynamic menu.
 @MainActor
 final class MenuBarController: NSObject, NSMenuDelegate {
-
     private var statusItem: NSStatusItem?
     private let configStore: DisplayConfigStore
     private var currentDisplay: ConnectedDisplay?
@@ -38,11 +37,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         // Current display status
         if let display = currentDisplay {
-            let statusText: String
-            if let config = display.appliedConfig {
-                statusText = "\(display.name) · \(config.mode.displayName) \(config.extendPreset.displayName)"
+            let statusText = if let config = display.appliedConfig {
+                "\(display.name) · \(config.mode.displayName) \(config.extendPreset.displayName)"
             } else {
-                statusText = "\(display.name) · connected"
+                "\(display.name) · connected"
             }
             let statusItem = NSMenuItem(title: statusText, action: nil, keyEquivalent: "")
             statusItem.isEnabled = false
@@ -57,12 +55,20 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
         // Option-only: Re-trigger prompt
         if optionHeld {
-            let retrigger = NSMenuItem(title: "Re-trigger prompt", action: #selector(retriggerPrompt), keyEquivalent: "")
+            let retrigger = NSMenuItem(
+                title: "Re-trigger prompt",
+                action: #selector(retriggerPrompt),
+                keyEquivalent: ""
+            )
             retrigger.target = self
             retrigger.isEnabled = currentDisplay != nil
             menu.addItem(retrigger)
 
-            let testNotif = NSMenuItem(title: "Test notification", action: #selector(testNotification), keyEquivalent: "")
+            let testNotif = NSMenuItem(
+                title: "Test notification",
+                action: #selector(testNotification),
+                keyEquivalent: ""
+            )
             testNotif.target = self
             menu.addItem(testNotif)
 
@@ -83,7 +89,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                 if let size = entry.config.screenSizeInches {
                     parts.append("\(size)″")
                 }
-                let label = "\(parts.joined(separator: " ")) · \(entry.config.mode.displayName) \(entry.config.extendPreset.displayName)"
+                let modeDisplay = entry.config.mode.displayName
+                let presetDisplay = entry.config.extendPreset.displayName
+                let label = "\(parts.joined(separator: " ")) · \(modeDisplay) \(presetDisplay)"
                 let item = NSMenuItem(title: label, action: nil, keyEquivalent: "")
                 item.isEnabled = false
                 submenu.addItem(item)
@@ -105,11 +113,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
             let devSuffix: String
             #if DEV_BUILD
-            devSuffix = " (Dev)"
+                devSuffix = " (Dev)"
             #else
-            devSuffix = ""
+                devSuffix = ""
             #endif
-            let versionItem = NSMenuItem(title: "v\(version) build \(build)\(devSuffix)", action: nil, keyEquivalent: "")
+            let versionItem = NSMenuItem(
+                title: "v\(version) build \(build)\(devSuffix)",
+                action: nil,
+                keyEquivalent: ""
+            )
             versionItem.isEnabled = false
             menu.addItem(versionItem)
 
