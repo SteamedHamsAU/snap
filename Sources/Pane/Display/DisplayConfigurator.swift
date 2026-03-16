@@ -40,11 +40,20 @@ enum DisplayConfigurator {
 
             switch config.extendPreset {
             case .externalRight:
-                origin = CGPoint(x: internalBounds.maxX, y: internalBounds.minY)
+                origin = CGPoint(
+                    x: internalBounds.maxX,
+                    y: internalBounds.midY - externalBounds.height / 2
+                )
             case .externalLeft:
-                origin = CGPoint(x: internalBounds.minX - externalBounds.width, y: internalBounds.minY)
+                origin = CGPoint(
+                    x: internalBounds.minX - externalBounds.width,
+                    y: internalBounds.midY - externalBounds.height / 2
+                )
             case .externalAbove:
-                origin = CGPoint(x: internalBounds.minX, y: internalBounds.minY - externalBounds.height)
+                origin = CGPoint(
+                    x: internalBounds.midX - externalBounds.width / 2,
+                    y: internalBounds.minY - externalBounds.height
+                )
             }
 
             CGConfigureDisplayOrigin(cfg, externalID, Int32(origin.x), Int32(origin.y))

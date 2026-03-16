@@ -33,6 +33,7 @@ struct ExtendView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
             }
         }
     }
