@@ -11,7 +11,8 @@ struct SettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var showNotification = UserDefaults.standard.object(forKey: "showToastOnKnownDisplay") as? Bool ?? true
     @State private var entries: [(uuid: String, config: DisplayConfiguration)] = []
-    @State private var settingsWindow: NSWindow?
+    @State private var settingsWindowBox = WeakWindowBox()
+    @State private var settingsWindowID: ObjectIdentifier?
 
     var body: some View {
         TabView {
@@ -27,10 +28,18 @@ struct SettingsView: View {
             entries = configStore.allEntries()
         }
         .background(
-            WindowReader(window: $settingsWindow)
+            WindowReader(
+                window: Binding(
+                    get: { settingsWindowBox.window },
+                    set: { newWindow in
+                        settingsWindowBox.window = newWindow
+                        settingsWindowID = newWindow.map { ObjectIdentifier($0) }
+                    }
+                )
+            )
         )
-        .task(id: settingsWindow) {
-            guard let window = settingsWindow else { return }
+        .task(id: settingsWindowID) {
+            guard let window = settingsWindowBox.window else { return }
 
             for await notification in NotificationCenter.default.notifications(
                 named: NSWindow.didBecomeKeyNotification,
@@ -159,6 +168,10 @@ struct SettingsView: View {
         }
         .frame(maxWidth: .infinity)
     }
+}
+
+private final class WeakWindowBox {
+    weak var window: NSWindow?
 }
 
 @MainActor
