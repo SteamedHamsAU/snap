@@ -146,8 +146,15 @@ extension AppDelegate: DisplayMonitorDelegate {
             menuBarController?.updateCurrentDisplay(currentDisplay)
 
             let modeName = savedConfig.mode.displayName.lowercased()
-            let presetName = savedConfig.extendPreset.displayName.lowercased()
-            let modeLabel = "\(modeName) \(presetName)"
+            let modeLabel: String
+            switch savedConfig.mode {
+            case .extend:
+                let presetName = savedConfig.extendPreset.displayName.lowercased()
+                modeLabel = "\(modeName) \(presetName)"
+            case .mirror:
+                let targetName = savedConfig.mirrorTarget.displayName.lowercased()
+                modeLabel = "\(modeName) \(targetName)"
+            }
             Self.logger.notice("Applied saved config: \(modeLabel)")
 
             // Show toast after a brief delay — the display reconfiguration
