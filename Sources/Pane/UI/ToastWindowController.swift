@@ -35,7 +35,7 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
 
     func show(
         message: String,
-        duration _: TimeInterval = 4,
+        duration: TimeInterval = 4,
         onChangeTapped: @escaping () -> Void
     ) {
         self.onChangeTapped = onChangeTapped
@@ -46,8 +46,10 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
         content.sound = .default
         content.categoryIdentifier = Self.categoryID
 
+        let identifier = UUID().uuidString
+
         let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
+            identifier: identifier,
             content: content,
             trigger: nil
         )
@@ -55,6 +57,18 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
         UNUserNotificationCenter.current().add(request) { error in
             if let error {
                 print("Failed to add notification: \(error)")
+                return
+            }
+
+            guard duration > 0 else {
+                return
+            }
+
+            Task.detached {
+                let nanoseconds = UInt64(max(duration, 0) * 1_000_000_000)
+                try? await Task.sleep(nanoseconds: nanoseconds)
+                UNUserNotificationCenter.current()
+                    .removeDeliveredNotifications(withIdentifiers: [identifier])
             }
         }
     }
