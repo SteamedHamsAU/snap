@@ -29,8 +29,7 @@ final class DisplayMonitor: @unchecked Sendable {
 
     /// The C callback for `CGDisplayRegisterReconfigurationCallback`.
     /// Bridges to the Swift instance via an `Unmanaged` pointer in `userInfo`.
-    private static let reconfigurationCallback: CGDisplayReconfigurationCallBack = {
-        displayID, flags, userInfo in
+    private static let reconfigurationCallback: CGDisplayReconfigurationCallBack = { displayID, flags, userInfo in
         guard let userInfo else { return }
         let monitor = Unmanaged<DisplayMonitor>.fromOpaque(userInfo).takeUnretainedValue()
         monitor.handleReconfiguration(displayID: displayID, flags: flags)
@@ -64,6 +63,7 @@ final class DisplayMonitor: @unchecked Sendable {
         // Log all events for debugging
         Self.logger.notice(
             // swiftformat:disable:next wrap
+            // swiftlint:disable:next line_length
             "Reconfiguration event: display=\(displayID) flags=\(flags.rawValue) add=\(flags.contains(.addFlag)) builtin=\(CGDisplayIsBuiltin(displayID)) mirror=\(CGDisplayIsInMirrorSet(displayID))"
         )
 

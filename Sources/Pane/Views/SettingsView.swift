@@ -104,8 +104,10 @@ struct SettingsView: View {
                                     if let size = entry.config.screenSizeInches {
                                         parts.append("\(size)″")
                                     }
-                                    if let w = entry.config.resolutionWidth, let h = entry.config.resolutionHeight {
-                                        parts.append("(\(w) × \(h))")
+                                    if let width = entry.config.resolutionWidth,
+                                       let height = entry.config.resolutionHeight
+                                    {
+                                        parts.append("(\(width) × \(height))")
                                     }
                                     return parts.joined(separator: " ")
                                 }()

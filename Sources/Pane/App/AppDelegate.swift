@@ -71,8 +71,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         resolution: CGSize
     ) {
         promptController?.show(
-            displayID: displayID,
-            uuid: uuid,
             name: name,
             resolution: resolution,
             onApply: { [weak self] config in

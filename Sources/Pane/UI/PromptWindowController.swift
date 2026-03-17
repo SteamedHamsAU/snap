@@ -11,8 +11,6 @@ final class PromptWindowController {
 
     /// Show the prompt for a newly connected display.
     func show(
-        displayID _: CGDirectDisplayID,
-        uuid _: String,
         name: String,
         resolution: CGSize,
         onApply: @escaping (DisplayConfiguration) -> Void,
