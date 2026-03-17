@@ -90,7 +90,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
                     parts.append("\(size)″")
                 }
                 let modeDisplay = entry.config.mode.displayName
-                let presetDisplay = entry.config.extendPreset.displayName
+                let presetDisplay: String
+                switch entry.config.mode {
+                case .mirrorTarget(let target):
+                    presetDisplay = target.displayName
+                default:
+                    presetDisplay = entry.config.extendPreset.displayName
+                }
                 let label = "\(parts.joined(separator: " ")) · \(modeDisplay) \(presetDisplay)"
                 let item = NSMenuItem(title: label, action: nil, keyEquivalent: "")
                 item.isEnabled = false
