@@ -38,7 +38,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         // Current display status
         if let display = currentDisplay {
             let statusText = if let config = display.appliedConfig {
-                "\(display.name) · \(config.mode.displayName) \(config.extendPreset.displayName)"
+                "\(display.name) · \(config.mode.displayName)"
             } else {
                 "\(display.name) · connected"
             }
