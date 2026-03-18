@@ -42,11 +42,9 @@ targets:
         COMBINE_HIDPI_IMAGES: true
     entitlements:
       path: Config/Pane.entitlements
-    postBuildScripts:
-      - name: Set Build Number
-        script: |
-          "${SRCROOT}/Scripts/set-build-number.sh"
-        basedOnDependencyAnalysis: false
+    configFiles:
+      Debug: Config/GeneratedBuildNumber.xcconfig
+      Release: Config/GeneratedBuildNumber.xcconfig
     dependencies:
       - package: Sparkle
 
@@ -61,6 +59,11 @@ targets:
 schemes:
   Pane:
     build:
+      preActions:
+        - script: |
+            "${SRCROOT}/Scripts/set-build-number.sh"
+          name: Set Build Number
+          settingsTarget: Pane
       targets:
         Pane: all
     run:

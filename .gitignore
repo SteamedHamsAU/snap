@@ -8,6 +8,9 @@ DerivedData/
 # Secrets
 Config/Secrets.xcconfig
 
+# Generated build number
+Config/GeneratedBuildNumber.xcconfig
+
 # macOS
 .DS_Store
 *.app
