@@ -74,15 +74,15 @@ final class DisplayMonitor: @unchecked Sendable {
         // The display might already be in a mirror set if macOS auto-mirrors on connect.
 
         let uuid = displayUUID(for: displayID)
-        let name = displayName(for: displayID)
         let bounds = CGDisplayBounds(displayID)
         let resolution = bounds.size
 
         Self.logger.notice(
-            "External display connected: \(name) [\(uuid)] \(Int(resolution.width))×\(Int(resolution.height))"
+            "External display connected: [\(uuid)] \(Int(resolution.width))×\(Int(resolution.height))"
         )
 
         Task { @MainActor in
+            let name = self.displayName(for: displayID)
             self.delegate?.displayDidConnect(
                 id: displayID,
                 uuid: uuid,
@@ -108,6 +108,7 @@ final class DisplayMonitor: @unchecked Sendable {
     }
 
     /// Returns the human-readable product name via NSScreen.
+    @MainActor
     func displayName(for displayID: CGDirectDisplayID) -> String {
         for screen in NSScreen.screens {
             let screenID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
