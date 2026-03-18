@@ -13,6 +13,7 @@ protocol DisplayMonitorDelegate: AnyObject {
         name: String,
         resolution: CGSize
     )
+    func displayDidDisconnect(id: CGDirectDisplayID)
 }
 
 /// Registers for CGDisplay reconfiguration events and dispatches to delegate.
@@ -67,8 +68,17 @@ final class DisplayMonitor: @unchecked Sendable {
             "Reconfiguration event: display=\(displayID) flags=\(flags.rawValue) add=\(flags.contains(.addFlag)) builtin=\(CGDisplayIsBuiltin(displayID)) mirror=\(CGDisplayIsInMirrorSet(displayID))"
         )
 
-        guard flags.contains(.addFlag) else { return }
         guard !CGDisplayIsBuiltin(displayID).boolValue else { return }
+
+        if flags.contains(.removeFlag) {
+            Self.logger.notice("External display disconnected: \(displayID)")
+            Task { @MainActor in
+                self.delegate?.displayDidDisconnect(id: displayID)
+            }
+            return
+        }
+
+        guard flags.contains(.addFlag) else { return }
 
         // Don't filter on mirror set here — macOS may briefly mirror during reconfiguration.
         // The display might already be in a mirror set if macOS auto-mirrors on connect.
