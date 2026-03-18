@@ -55,6 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.startMonitoring()
         displayMonitor = monitor
 
+        // Scan for displays already connected at launch
+        scanForConnectedDisplays()
+
         Self.logger.notice("Pane started")
     }
 
@@ -122,6 +125,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             resolution: display.resolution
         )
     }
+
+    // MARK: - Startup scan
+
+    /// Finds external displays already connected when the app launches.
+    private func scanForConnectedDisplays() {
+        guard let monitor = displayMonitor else { return }
+
+        var displayCount: UInt32 = 0
+        guard CGGetOnlineDisplayList(0, nil, &displayCount) == .success,
+              displayCount > 0
+        else {
+            Self.logger.notice("No online displays found at launch")
+            return
+        }
+
+        var displayIDs = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
+        guard CGGetOnlineDisplayList(displayCount, &displayIDs, &displayCount) == .success else {
+            Self.logger.error("Failed to enumerate online displays")
+            return
+        }
+
+        for id in displayIDs where CGDisplayIsBuiltin(id) == 0 {
+            let uuid = monitor.displayUUID(for: id)
+            let name = monitor.displayName(for: id)
+            let bounds = CGDisplayBounds(id)
+            Self.logger.notice(
+                "Found external display at launch: \(name) [\(uuid)]"
+            )
+            displayDidConnect(
+                id: id,
+                uuid: uuid,
+                name: name,
+                resolution: bounds.size
+            )
+        }
+    }
 }
 
 // MARK: - DisplayMonitorDelegate
@@ -180,5 +219,13 @@ extension AppDelegate: DisplayMonitorDelegate {
             menuBarController?.updateCurrentDisplay(currentDisplay)
             showPrompt(displayID: id, uuid: uuid, name: name, resolution: resolution)
         }
+    }
+
+    func displayDidDisconnect(id: CGDirectDisplayID) {
+        guard currentDisplay?.id == id else { return }
+        let name = currentDisplay?.name ?? "unknown"
+        Self.logger.notice("Display disconnected: \(name) (ID \(id))")
+        currentDisplay = nil
+        menuBarController?.updateCurrentDisplay(nil)
     }
 }
