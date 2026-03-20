@@ -8,7 +8,7 @@
 
 ## Architecture
 - AppKit + SwiftUI hybrid. The app uses `NSApplicationDelegate`, `NSStatusItem`, `NSPanel`, and `NSHostingView` to host SwiftUI views.
-- No pure SwiftUI `@main App` lifecycle — the entry point is `SnapApp.swift` using `@main` with `NSApplicationMain`.
+- No pure SwiftUI `@main App` lifecycle — the entry point is `SnapApp.swift` using `@main` with a custom `static func main()` that calls `NSApplication.shared.run()`.
 - Mark all UI and display-related code `@MainActor`.
 - Business logic in `Display/` directory as structs or actors.
 - No singletons. Dependency injection via initialiser parameters or `@Environment`.
