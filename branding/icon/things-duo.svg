@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FAFAFA"/>
+    </linearGradient>
+    <linearGradient id="uwFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E3A5F"/>
+      <stop offset="100%" stop-color="#162D4D"/>
+    </linearGradient>
+    <linearGradient id="mbFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4A90D9"/>
+      <stop offset="100%" stop-color="#3578C2"/>
+    </linearGradient>
+    <filter id="ds">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.10"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#bg)"/>
+  <g filter="url(#ds)">
+    <rect x="52" y="188" width="920" height="394" rx="18" ry="18"
+          fill="url(#uwFill)"/>
+    <!-- Overlap accent glow -->
+    <line x1="70" y1="474" x2="228" y2="474"
+          stroke="#60A5FA" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+    <line x1="796" y1="474" x2="954" y2="474"
+          stroke="#60A5FA" stroke-width="5" stroke-linecap="round" filter="url(#glow)"/>
+    <line x1="252" y1="474" x2="772" y2="474"
+          stroke="#60A5FA" stroke-width="3" stroke-linecap="round" opacity="0.5" filter="url(#glow)"/>
+    <!-- MacBook screen bezel -->
+    <rect x="232" y="474" width="560" height="340"
+          rx="14" ry="14" fill="#0A0A0A"/>
+    <path d="M 244,481 H 472 V 496 Q 472,501 477,501 H 547 Q 552,501 552,496 V 481 H 780 Q 785,481 785,486 V 802 Q 785,807 780,807 H 244 Q 239,807 239,802 V 486 Q 239,481 244,481 Z" fill="url(#mbFill)"/>
+    <!-- MacBook base -->
+    <path d="M 232,817 H 485.5 Q 487,817 487,818.5 V 818.5 Q 487,820 488.5,820 H 535.5 Q 537,820 537,818.5 V 818.5 Q 537,817 538.5,817 H 792 Q 797,817 797,822 V 830 Q 797,835 792,835 H 232 Q 227,835 227,830 V 822 Q 227,817 232,817 Z" fill="#2A2A2C"/>
+  </g>
+</svg>
