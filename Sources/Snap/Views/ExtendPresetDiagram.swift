@@ -11,6 +11,7 @@ struct ExtendPresetDiagram: View {
             .aspectRatio(contentMode: .fit)
             .opacity(isSelected ? 1.0 : 0.5)
             .frame(width: 120, height: 80)
+            .accessibilityHidden(true)
     }
 }
 
