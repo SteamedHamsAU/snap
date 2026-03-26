@@ -1,19 +1,19 @@
 import Foundation
 
 /// Model representing a saved display arrangement configuration.
-struct DisplayConfiguration: Codable, Sendable {
-    enum Mode: String, Codable, Sendable {
+struct DisplayConfiguration: Codable {
+    enum Mode: String, Codable {
         case extend
         case mirror
     }
 
-    enum ExtendPreset: String, Codable, CaseIterable, Sendable {
+    enum ExtendPreset: String, Codable, CaseIterable {
         case externalRight
         case externalLeft
         case externalAbove
     }
 
-    enum MirrorTarget: String, Codable, CaseIterable, Sendable {
+    enum MirrorTarget: String, Codable, CaseIterable {
         case macBook
         case external
     }

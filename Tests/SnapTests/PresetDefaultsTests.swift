@@ -2,7 +2,6 @@ import Foundation
 @testable import Snap
 import Testing
 
-@Suite("PresetDefaults")
 struct PresetDefaultsTests {
     private func makeSuite(name: String = #function) -> UserDefaults {
         let suite = UserDefaults(suiteName: "PresetDefaultsTests.\(name)")!

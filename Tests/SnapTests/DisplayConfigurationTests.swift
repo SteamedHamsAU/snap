@@ -1,7 +1,6 @@
 @testable import Snap
 import Testing
 
-@Suite("DisplayConfiguration Model")
 struct DisplayConfigurationTests {
     @Test("Encoding and decoding preserves all fields")
     func roundTrip() throws {
@@ -43,7 +42,6 @@ struct DisplayConfigurationTests {
 
     // MARK: - Mode
 
-    @Suite("Mode")
     struct ModeTests {
         @Test("extend encodes and decodes correctly")
         func extendRoundTrip() throws {
@@ -80,7 +78,6 @@ struct DisplayConfigurationTests {
 
     // MARK: - ExtendPreset
 
-    @Suite("ExtendPreset")
     struct ExtendPresetTests {
         @Test("all values encode and decode correctly", arguments: DisplayConfiguration.ExtendPreset.allCases)
         func encodeDecode(_ preset: DisplayConfiguration.ExtendPreset) throws {
@@ -114,7 +111,6 @@ struct DisplayConfigurationTests {
 
     // MARK: - MirrorTarget
 
-    @Suite("MirrorTarget")
     struct MirrorTargetTests {
         @Test("all values encode and decode correctly", arguments: DisplayConfiguration.MirrorTarget.allCases)
         func encodeDecode(_ target: DisplayConfiguration.MirrorTarget) throws {
