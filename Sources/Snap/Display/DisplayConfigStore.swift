@@ -7,6 +7,7 @@ import Foundation
 final class DisplayConfigStore {
     private var configurations: [String: DisplayConfiguration] = [:]
     private let fileURL: URL
+    private var persistTask: Task<Void, Never>?
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -54,9 +55,16 @@ final class DisplayConfigStore {
     }
 
     private func persist() {
+        // Cancel any pending write — we'll replace it with the latest snapshot.
+        // The in-memory state is always mutated on the main actor before this is
+        // called, so encoding here captures the definitive current state.
+        persistTask?.cancel()
         let encoder = PropertyListEncoder()
         encoder.outputFormat = .xml
         guard let data = try? encoder.encode(configurations) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        let url = fileURL
+        persistTask = Task.detached(priority: .utility) {
+            try? data.write(to: url, options: .atomic)
+        }
     }
 }
