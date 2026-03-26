@@ -59,14 +59,12 @@ jobs:
       # TODO(#19): Replace ad-hoc signing above with Developer ID certificate,
       # then notarize and staple before creating the DMG.
 
+      # TODO(#19): Restore xcodebuild -exportArchive with Developer ID signing.
+      # For now, copy the app directly from the archive (no team/signing configured).
       - name: Export app
         run: |
-          set -o pipefail
-          xcodebuild -exportArchive \
-            -archivePath build/Snap.xcarchive \
-            -exportPath build/export \
-            -exportOptionsPlist Config/ExportOptions.plist \
-            | xcbeautify
+          mkdir -p build/export
+          cp -R build/Snap.xcarchive/Products/Applications/Snap.app build/export/Snap.app
 
       - name: Create DMG
         run: |
