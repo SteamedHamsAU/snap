@@ -33,7 +33,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             icon.isTemplate = true
             button.image = icon
             button.toolTip = "Snap"
-            button.accessibilityLabel = "Snap menu"
+            button.setAccessibilityLabel("Snap menu")
         }
         let menu = NSMenu()
         menu.delegate = self

@@ -4,7 +4,7 @@ import Foundation
 /// so the prompt can pre-select them on next open.
 ///
 /// See snap-spec Section 3 — Last-used preset.
-struct PresetDefaults {
+struct PresetDefaults: @unchecked Sendable {
     // MARK: - Keys
 
     enum Key {
