@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [release]
   push:
+    branches: [release]
     tags:
       - "v*"
 
@@ -38,7 +39,7 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
           else
-            VERSION="0.0.0-pr"
+            VERSION="0.2.0-alpha"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
@@ -75,11 +76,81 @@ jobs:
             -format UDZO \
             "build/Snap-${VERSION}.dmg"
 
+      - name: Sign update for Sparkle
+        id: sparkle
+        if: env.SPARKLE_EDDSA_KEY != ''
+        env:
+          SPARKLE_EDDSA_KEY: ${{ secrets.SPARKLE_EDDSA_KEY }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DMG="build/Snap-${VERSION}.dmg"
+          SPARKLE_BIN="$(find SourcePackages/artifacts -name sign_update -not -path '*/old_dsa_scripts/*' | head -1)"
+          if [ -z "$SPARKLE_BIN" ]; then
+            SPARKLE_BIN="$(find ~/Library/Developer/Xcode/DerivedData/Snap-*/SourcePackages/artifacts -name sign_update -not -path '*/old_dsa_scripts/*' | head -1)"
+          fi
+          if [ -z "$SPARKLE_BIN" ]; then
+            echo "Error: Could not locate Sparkle sign_update binary." >&2
+            echo "Searched: SourcePackages/artifacts, ~/Library/Developer/Xcode/DerivedData/Snap-*/SourcePackages/artifacts" >&2
+            exit 1
+          fi
+          SIGN_OUTPUT=$("$SPARKLE_BIN" "$DMG" --ed-key-file <(echo "$SPARKLE_EDDSA_KEY"))
+          echo "Sparkle signature output:"
+          echo "$SIGN_OUTPUT"
+          echo "$SIGN_OUTPUT" > "build/sparkle-signature-${VERSION}.txt"
+
+          ED_SIGNATURE=$(echo "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+          LENGTH=$(echo "$SIGN_OUTPUT" | sed -n 's/.*length="\([^"]*\)".*/\1/p')
+          if [ -z "$LENGTH" ]; then
+            LENGTH=$(stat -f%z "$DMG")
+          fi
+          if [ -z "$ED_SIGNATURE" ]; then
+            echo "Error: Failed to parse edSignature from sign_update output." >&2
+            exit 1
+          fi
+          case "$LENGTH" in
+            ''|*[!0-9]*)
+              echo "Error: Invalid DMG length \"$LENGTH\"; expected numeric byte count." >&2
+              exit 1
+              ;;
+          esac
+          echo "ed_signature=${ED_SIGNATURE}" >> "$GITHUB_OUTPUT"
+          echo "length=${LENGTH}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate appcast snippet
+        if: steps.sparkle.outputs.ed_signature
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD="$(grep CURRENT_PROJECT_VERSION Config/GeneratedBuildNumber.xcconfig | awk '{print $3}')"
+          PUBDATE="$(date -u '+%a, %d %b %Y %H:%M:%S %z')"
+          EDSIG="${{ steps.sparkle.outputs.ed_signature }}"
+          LEN="${{ steps.sparkle.outputs.length }}"
+          {
+            echo "<item>"
+            echo "  <title>Snap ${VERSION}</title>"
+            echo "  <pubDate>${PUBDATE}</pubDate>"
+            echo "  <sparkle:version>${BUILD}</sparkle:version>"
+            echo "  <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>"
+            echo "  <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>"
+            echo "  <enclosure"
+            echo "    url=\"https://github.com/SteamedHamsAU/snap/releases/download/v${VERSION}/Snap-${VERSION}.dmg\""
+            echo "    type=\"application/octet-stream\""
+            echo "    sparkle:edSignature=\"${EDSIG}\""
+            echo "    length=\"${LEN}\"/>"
+            echo "</item>"
+          } > build/appcast-snippet.xml
+          echo ""
+          echo "────── Appcast <item> ──────"
+          cat build/appcast-snippet.xml
+          echo "────────────────────────────"
+
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
           name: Snap-${{ steps.version.outputs.version }}.dmg
-          path: build/Snap-${{ steps.version.outputs.version }}.dmg
+          path: |
+            build/Snap-${{ steps.version.outputs.version }}.dmg
+            build/sparkle-signature-*.txt
+            build/appcast-snippet.xml
 
   publish:
     name: Publish GitHub Release
@@ -94,10 +165,32 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      - name: Download DMG artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: Snap-${{ steps.version.outputs.version }}.dmg
+
+      - name: Build release body
+        id: body
+        run: |
+          if [ -f appcast-snippet.xml ]; then
+            {
+              echo "### Appcast Update"
+              echo ""
+              echo 'Add this `<item>` to `appcast.xml` in the website repo:'
+              echo ""
+              echo '```xml'
+              cat appcast-snippet.xml
+              echo '```'
+            } > release-body.md
+          else
+            touch release-body.md
+          fi
+          {
+            echo "body<<GHEOF"
+            cat release-body.md
+            echo "GHEOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -105,6 +198,7 @@ jobs:
           name: Snap ${{ steps.version.outputs.version }}
           tag_name: ${{ github.ref_name }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          body: ${{ steps.body.outputs.body }}
           files: Snap-${{ steps.version.outputs.version }}.dmg
           generate_release_notes: true

@@ -27,6 +27,8 @@
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>SUFeedURL</key>
-	<string>https://steamedhams.au/snap/appcast.xml</string>
+	<string>https://steamedhams.au/projects/snap/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>JGLvS2Z/hnHkYKmCYb4UOeEuuvUO5yqIvWvcpnc26I0=</string>
 </dict>
 </plist>

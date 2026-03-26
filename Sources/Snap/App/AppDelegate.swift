@@ -1,5 +1,6 @@
 import AppKit
 import os
+import ServiceManagement
 import Sparkle
 
 /// Central coordinator: sets up menu bar, display monitoring, and Sparkle updates.
@@ -58,11 +59,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Scan for displays already connected at launch
         scanForConnectedDisplays()
 
+        // First-run: ask user to enable launch at login
+        promptLaunchAtLoginIfNeeded()
+
         Self.logger.notice("Snap started")
     }
 
     func applicationWillTerminate(_: Notification) {
         displayMonitor?.stopMonitoring()
+    }
+
+    // MARK: - First-run launch at login
+
+    private static let hasPromptedLoginKey = "hasPromptedLaunchAtLogin"
+
+    private func promptLaunchAtLoginIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: Self.hasPromptedLoginKey) else {
+            return
+        }
+        UserDefaults.standard.set(true, forKey: Self.hasPromptedLoginKey)
+
+        // Brief delay so the menu bar icon is visible before the alert appears
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            self?.showLaunchAtLoginAlert()
+        }
+    }
+
+    private func showLaunchAtLoginAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Launch Snap at login?"
+        alert.informativeText = "Snap works best when it starts automatically "
+            + "so it can detect displays as soon as you plug them in."
+        alert.addButton(withTitle: "Enable")
+        alert.addButton(withTitle: "Not Now")
+        alert.alertStyle = .informational
+
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            do {
+                try SMAppService.mainApp.register()
+                Self.logger.notice("Launch at login enabled via first-run prompt")
+            } catch {
+                Self.logger.error("Failed to enable launch at login: \(error)")
+            }
+        }
     }
 
     // MARK: - Prompt
