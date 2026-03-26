@@ -1,4 +1,5 @@
 import AppKit
+import os
 import ServiceManagement
 import SwiftUI
 
@@ -6,6 +7,11 @@ import SwiftUI
 struct SettingsView: View {
     let configStore: DisplayConfigStore
     let checkForUpdates: () -> Void
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "au.steamedhams.snap",
+        category: "SettingsView"
+    )
 
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var showNotification = UserDefaults.standard.object(
@@ -67,7 +73,7 @@ struct SettingsView: View {
                             try SMAppService.mainApp.unregister()
                         }
                     } catch {
-                        print("Launch at login error: \(error)")
+                        Self.logger.error("Launch at login error: \(error)")
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }
                 }
