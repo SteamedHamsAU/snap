@@ -45,6 +45,7 @@ jobs:
 
       - name: Archive (Release)
         run: |
+          set -o pipefail
           xcodebuild archive \
             -scheme Snap \
             -configuration Release \
@@ -60,6 +61,7 @@ jobs:
 
       - name: Export app
         run: |
+          set -o pipefail
           xcodebuild -exportArchive \
             -archivePath build/Snap.xcarchive \
             -exportPath build/export \

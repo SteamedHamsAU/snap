@@ -4,6 +4,6 @@
 <dict>
     <!-- TODO(#19): Change method to "developer-id" once signing credentials are configured -->
     <key>method</key>
-    <string>none</string>
+    <string>debugging</string>
 </dict>
 </plist>
