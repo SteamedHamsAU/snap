@@ -88,6 +88,11 @@ jobs:
           if [ -z "$SPARKLE_BIN" ]; then
             SPARKLE_BIN="$(find ~/Library/Developer/Xcode/DerivedData/Snap-*/SourcePackages/artifacts -name sign_update -not -path '*/old_dsa_scripts/*' | head -1)"
           fi
+          if [ -z "$SPARKLE_BIN" ]; then
+            echo "Error: Could not locate Sparkle sign_update binary." >&2
+            echo "Searched: SourcePackages/artifacts, ~/Library/Developer/Xcode/DerivedData/Snap-*/SourcePackages/artifacts" >&2
+            exit 1
+          fi
           SIGN_OUTPUT=$("$SPARKLE_BIN" "$DMG" --ed-key-file <(echo "$SPARKLE_EDDSA_KEY"))
           echo "Sparkle signature output:"
           echo "$SIGN_OUTPUT"
@@ -98,6 +103,16 @@ jobs:
           if [ -z "$LENGTH" ]; then
             LENGTH=$(stat -f%z "$DMG")
           fi
+          if [ -z "$ED_SIGNATURE" ]; then
+            echo "Error: Failed to parse edSignature from sign_update output." >&2
+            exit 1
+          fi
+          case "$LENGTH" in
+            ''|*[!0-9]*)
+              echo "Error: Invalid DMG length \"$LENGTH\"; expected numeric byte count." >&2
+              exit 1
+              ;;
+          esac
           echo "ed_signature=${ED_SIGNATURE}" >> "$GITHUB_OUTPUT"
           echo "length=${LENGTH}" >> "$GITHUB_OUTPUT"
 
