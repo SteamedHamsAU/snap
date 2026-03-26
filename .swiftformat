@@ -4,3 +4,4 @@
 --wraparguments before-first
 --maxwidth 120
 --disable redundantSelf
+--modifierorder nonisolated,override,private,public,internal,fileprivate,open,static,class,final,lazy,required,optional,convenience,dynamic,weak,unowned,mutating,nonmutating

@@ -6,7 +6,7 @@ import UserNotifications
 final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
     private var onChangeTapped: (() -> Void)?
     private static let categoryID = "DISPLAY_APPLIED"
-    private nonisolated static let changeActionID = "CHANGE_ACTION"
+    nonisolated private static let changeActionID = "CHANGE_ACTION"
 
     override init() {
         super.init()
