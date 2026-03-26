@@ -18,7 +18,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     func setup() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "display", accessibilityDescription: "Snap")
+            let icon: NSImage
+            if let assetIcon = NSImage(named: "MenuBarIcon") {
+                icon = assetIcon
+            } else if let fallbackIcon = NSImage(
+                systemSymbolName: "display.2",
+                accessibilityDescription: "Open Snap display menu"
+            ) {
+                icon = fallbackIcon
+            } else {
+                // If both the asset and SF Symbol fail, leave the default button appearance.
+                return
+            }
+            icon.isTemplate = true
+            button.image = icon
+            button.toolTip = "Snap"
+            button.accessibilityLabel = "Snap menu"
         }
         let menu = NSMenu()
         menu.delegate = self
