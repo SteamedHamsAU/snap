@@ -217,6 +217,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [archive, publish]
     runs-on: ubuntu-latest
+    environment: website-deploy
 
     steps:
       - name: Dispatch to website
