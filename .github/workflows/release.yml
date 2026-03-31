@@ -14,6 +14,12 @@ jobs:
     runs-on: macos-15
     permissions:
       contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      ed_signature: ${{ steps.sparkle.outputs.ed_signature }}
+      length: ${{ steps.sparkle.outputs.length }}
+      build_version: ${{ steps.appcast.outputs.build_version }}
+      pub_date: ${{ steps.appcast.outputs.pub_date }}
 
     steps:
       - uses: actions/checkout@v4
@@ -117,6 +123,7 @@ jobs:
           echo "length=${LENGTH}" >> "$GITHUB_OUTPUT"
 
       - name: Generate appcast snippet
+        id: appcast
         if: steps.sparkle.outputs.ed_signature
         run: |
           VERSION="${{ steps.version.outputs.version }}"
@@ -142,6 +149,8 @@ jobs:
           echo "────── Appcast <item> ──────"
           cat build/appcast-snippet.xml
           echo "────────────────────────────"
+          echo "build_version=${BUILD}" >> "$GITHUB_OUTPUT"
+          echo "pub_date=${PUBDATE}" >> "$GITHUB_OUTPUT"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
@@ -202,3 +211,42 @@ jobs:
           body: ${{ steps.body.outputs.body }}
           files: Snap-${{ steps.version.outputs.version }}.dmg
           generate_release_notes: true
+
+  notify-website:
+    name: Update website appcast
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [archive, publish]
+    runs-on: ubuntu-latest
+    environment: website-deploy
+
+    steps:
+      - name: Dispatch to website
+        env:
+          TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+          VERSION: ${{ needs.archive.outputs.version }}
+          BUILD_VERSION: ${{ needs.archive.outputs.build_version }}
+          ED_SIGNATURE: ${{ needs.archive.outputs.ed_signature }}
+          LENGTH: ${{ needs.archive.outputs.length }}
+          PUB_DATE: ${{ needs.archive.outputs.pub_date }}
+        run: |
+          curl -fsSL -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token ${TOKEN}" \
+            https://api.github.com/repos/SteamedHamsAU/steamedhams-website/dispatches \
+            -d "$(jq -n \
+              --arg v "$VERSION" \
+              --arg bv "$BUILD_VERSION" \
+              --arg sig "$ED_SIGNATURE" \
+              --arg len "$LENGTH" \
+              --arg pd "$PUB_DATE" \
+              '{
+                event_type: "snap-release",
+                client_payload: {
+                  version: $v,
+                  build_version: $bv,
+                  ed_signature: $sig,
+                  length: $len,
+                  pub_date: $pd
+                }
+              }'
+            )"
