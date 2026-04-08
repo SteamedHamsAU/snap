@@ -27,6 +27,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     func applicationDidFinishLaunching(_: Notification) {
+        // Skip UI and hardware setup when running as a unit test host
+        guard !isRunningTests else {
+            Self.logger.notice("Snap launched as test host — skipping UI setup")
+            return
+        }
+
         // Menu bar
         let menuBar = MenuBarController(configStore: configStore)
         menuBar.onRetriggerPrompt = { [weak self] in
@@ -189,6 +195,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return false
         }
         return ids.contains(displayID)
+    }
+
+    /// Detects whether the app was launched as a unit test host.
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil
     }
 
     private func retriggerPrompt() {
