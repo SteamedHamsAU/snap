@@ -30,6 +30,8 @@ struct DisplayConfiguration: Codable {
     var resolutionHeight: Int?
     /// Display diagonal size in inches (e.g. 27). Optional for backwards compat.
     var screenSizeInches: Int?
+    /// Timestamp of the most recent connection event. Optional for backwards compat.
+    var lastConnected: Date?
 }
 
 // MARK: - Display-friendly labels

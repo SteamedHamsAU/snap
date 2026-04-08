@@ -1,4 +1,5 @@
 import AppKit
+import os
 import UserNotifications
 
 /// Shows native macOS notifications for known-display auto-apply events.
@@ -7,6 +8,11 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
     private var onChangeTapped: (() -> Void)?
     private static let categoryID = "DISPLAY_APPLIED"
     nonisolated private static let changeActionID = "CHANGE_ACTION"
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "au.steamedhams.snap",
+        category: "ToastWindowController"
+    )
 
     override init() {
         super.init()
@@ -27,9 +33,9 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
 
         center.requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error {
-                print("Notification auth error: \(error)")
+                Self.logger.error("Notification auth error: \(error)")
             }
-            print("Notification permission granted: \(granted)")
+            Self.logger.notice("Notification permission granted: \(granted)")
         }
     }
 
@@ -56,7 +62,7 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error {
-                print("Failed to add notification: \(error)")
+                Self.logger.error("Failed to add notification: \(error)")
                 return
             }
 
@@ -64,9 +70,8 @@ final class ToastWindowController: NSObject, UNUserNotificationCenterDelegate {
                 return
             }
 
-            Task.detached {
-                let nanoseconds = UInt64(max(duration, 0) * 1_000_000_000)
-                try? await Task.sleep(nanoseconds: nanoseconds)
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(duration))
                 UNUserNotificationCenter.current()
                     .removeDeliveredNotifications(withIdentifiers: [identifier])
             }

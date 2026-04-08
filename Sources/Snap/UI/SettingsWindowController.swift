@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Controls the settings window opened from the menu bar.
 @MainActor
-final class SettingsWindowController {
+final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let configStore: DisplayConfigStore
     private let updaterController: SPUStandardUpdaterController
@@ -12,6 +12,7 @@ final class SettingsWindowController {
     init(configStore: DisplayConfigStore, updaterController: SPUStandardUpdaterController) {
         self.configStore = configStore
         self.updaterController = updaterController
+        super.init()
     }
 
     func show() {
@@ -39,8 +40,15 @@ final class SettingsWindowController {
         window.contentView = hostingView
         window.center()
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         self.window = window
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowWillClose(_: Notification) {
+        window = nil
     }
 }

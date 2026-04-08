@@ -6,7 +6,7 @@ import SwiftUI
 /// Uses `NSPanel` with `nonactivatingPanel` style so it appears without
 /// stealing focus from the current app.
 @MainActor
-final class PromptWindowController {
+final class PromptWindowController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
 
     /// Show the prompt for a newly connected display.
@@ -54,6 +54,7 @@ final class PromptWindowController {
         panel.titleVisibility = .hidden
         panel.contentView = hostingView
         panel.isReleasedWhenClosed = false
+        panel.delegate = self
 
         // Centre on the built-in display (MacBook screen)
         let x = screenFrame.midX - panelWidth / 2
@@ -76,6 +77,12 @@ final class PromptWindowController {
             let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             return screenNumber == displayID
         }
+    }
+
+    // MARK: - NSWindowDelegate
+
+    func windowWillClose(_: Notification) {
+        panel = nil
     }
 
     /// Find the built-in MacBook display.

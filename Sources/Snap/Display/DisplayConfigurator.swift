@@ -2,6 +2,50 @@ import CoreGraphics
 import Foundation
 import os
 
+// MARK: - DisplayTransacting
+
+/// Abstracts CGDisplay configuration calls so `DisplayConfigurator` can be tested
+/// without hitting real hardware.
+@MainActor
+protocol DisplayTransacting {
+    func beginConfiguration() -> CGDisplayConfigRef?
+    func configureOrigin(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, x: Int32, y: Int32)
+    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID)
+    func completeConfiguration(_ configRef: CGDisplayConfigRef) -> Bool
+    func displayBounds(_ display: CGDirectDisplayID) -> CGRect
+}
+
+// MARK: - SystemDisplayTransactor
+
+/// Production implementation that forwards to the real CGDisplay C API.
+@MainActor
+struct SystemDisplayTransactor: DisplayTransacting {
+    func beginConfiguration() -> CGDisplayConfigRef? {
+        var configRef: CGDisplayConfigRef?
+        let status = CGBeginDisplayConfiguration(&configRef)
+        guard status == .success else { return nil }
+        return configRef
+    }
+
+    func configureOrigin(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, x: Int32, y: Int32) {
+        CGConfigureDisplayOrigin(configRef, display, x, y)
+    }
+
+    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID) {
+        CGConfigureDisplayMirrorOfDisplay(configRef, display, master)
+    }
+
+    func completeConfiguration(_ configRef: CGDisplayConfigRef) -> Bool {
+        CGCompleteDisplayConfiguration(configRef, .permanently) == .success
+    }
+
+    func displayBounds(_ display: CGDirectDisplayID) -> CGRect {
+        CGDisplayBounds(display)
+    }
+}
+
+// MARK: - DisplayConfigurator
+
 /// Applies display configurations using CGDisplay APIs.
 ///
 /// All methods must be called from `@MainActor` (CGDisplay APIs are synchronous
@@ -15,26 +59,26 @@ enum DisplayConfigurator {
 
     /// Apply the given configuration to the external display.
     ///
-    /// Wraps all changes in a `CGBeginDisplayConfiguration` / `CGCompleteDisplayConfiguration` transaction.
+    /// Wraps all changes in a `beginConfiguration` / `completeConfiguration` transaction
+    /// driven by the provided `transactor`. The default uses real CGDisplay APIs.
     static func apply(
         _ config: DisplayConfiguration,
         primaryID: CGDirectDisplayID,
-        externalID: CGDirectDisplayID
+        externalID: CGDirectDisplayID,
+        transactor: DisplayTransacting = SystemDisplayTransactor()
     ) {
-        var configRef: CGDisplayConfigRef?
-        let beginStatus = CGBeginDisplayConfiguration(&configRef)
-        guard beginStatus == .success, let cfg = configRef else {
-            logger.error("CGBeginDisplayConfiguration failed: \(beginStatus.rawValue)")
+        guard let cfg = transactor.beginConfiguration() else {
+            logger.error("beginConfiguration failed")
             return
         }
 
         switch config.mode {
         case .extend:
             // Always unmirror first (handles mirror → extend transition)
-            CGConfigureDisplayMirrorOfDisplay(cfg, externalID, kCGNullDirectDisplay)
+            transactor.configureMirror(cfg, display: externalID, master: kCGNullDirectDisplay)
 
-            let internalBounds = CGDisplayBounds(primaryID)
-            let externalBounds = CGDisplayBounds(externalID)
+            let internalBounds = transactor.displayBounds(primaryID)
+            let externalBounds = transactor.displayBounds(externalID)
             let origin = switch config.extendPreset {
             case .externalRight:
                 CGPoint(
@@ -53,24 +97,23 @@ enum DisplayConfigurator {
                 )
             }
 
-            CGConfigureDisplayOrigin(cfg, externalID, Int32(origin.x), Int32(origin.y))
+            transactor.configureOrigin(cfg, display: externalID, x: Int32(origin.x), y: Int32(origin.y))
             logger.info("Applying extend preset: \(config.extendPreset.rawValue)")
 
         case .mirror:
             switch config.mirrorTarget {
             case .macBook:
-                CGConfigureDisplayMirrorOfDisplay(cfg, externalID, primaryID)
+                transactor.configureMirror(cfg, display: externalID, master: primaryID)
             case .external:
-                CGConfigureDisplayMirrorOfDisplay(cfg, primaryID, externalID)
+                transactor.configureMirror(cfg, display: primaryID, master: externalID)
             }
             logger.info("Applying mirror target: \(config.mirrorTarget.rawValue)")
         }
 
-        let completeStatus = CGCompleteDisplayConfiguration(cfg, .permanently)
-        if completeStatus == .success {
+        if transactor.completeConfiguration(cfg) {
             logger.info("Display configuration applied successfully")
         } else {
-            logger.error("CGCompleteDisplayConfiguration failed: \(completeStatus.rawValue)")
+            logger.error("completeConfiguration failed")
         }
     }
 }

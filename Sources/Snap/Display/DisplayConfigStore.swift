@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Persists display configurations keyed by display UUID.
 ///
@@ -8,15 +9,27 @@ final class DisplayConfigStore {
     private var configurations: [String: DisplayConfiguration] = [:]
     private let fileURL: URL
 
-    init() {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "au.steamedhams.snap",
+        category: "DisplayConfigStore"
+    )
+
+    convenience init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let snapDir = appSupport.appendingPathComponent("Snap", isDirectory: true)
-        fileURL = snapDir.appendingPathComponent("displays.plist")
+        self.init(fileURL: snapDir.appendingPathComponent("displays.plist"))
+    }
 
-        // Ensure directory exists
-        try? FileManager.default.createDirectory(at: snapDir, withIntermediateDirectories: true)
+    init(fileURL: URL) {
+        self.fileURL = fileURL
 
-        // Load existing configurations
+        let parentDir = fileURL.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
+        } catch {
+            Self.logger.error("Failed to create config directory: \(error)")
+        }
+
         load()
     }
 
@@ -48,15 +61,35 @@ final class DisplayConfigStore {
     // MARK: - Private
 
     private func load() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        let decoder = PropertyListDecoder()
-        configurations = (try? decoder.decode([String: DisplayConfiguration].self, from: data)) ?? [:]
+        let data: Data
+        do {
+            data = try Data(contentsOf: fileURL)
+        } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
+            // No file yet — first launch, not an error
+            return
+        } catch {
+            Self.logger.error("Failed to read config file: \(error)")
+            return
+        }
+
+        do {
+            configurations = try PropertyListDecoder().decode(
+                [String: DisplayConfiguration].self,
+                from: data
+            )
+        } catch {
+            Self.logger.error("Failed to decode config file: \(error)")
+        }
     }
 
     private func persist() {
-        let encoder = PropertyListEncoder()
-        encoder.outputFormat = .xml
-        guard let data = try? encoder.encode(configurations) else { return }
-        try? data.write(to: fileURL, options: .atomic)
+        do {
+            let encoder = PropertyListEncoder()
+            encoder.outputFormat = .xml
+            let data = try encoder.encode(configurations)
+            try data.write(to: fileURL, options: .atomic)
+        } catch {
+            Self.logger.error("Failed to persist config file: \(error)")
+        }
     }
 }

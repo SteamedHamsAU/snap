@@ -1,3 +1,4 @@
+import Foundation
 @testable import Snap
 import Testing
 
@@ -166,5 +167,74 @@ struct DisplayConfigurationTests {
         let data = try PropertyListEncoder().encode(config)
         let decoded = try PropertyListDecoder().decode(DisplayConfiguration.self, from: data)
         #expect(decoded.rememberThisDisplay == false)
+    }
+
+    // MARK: - Backwards Compatibility
+
+    @Test("Decoding plist without optional fields succeeds with nils")
+    func decodeWithoutOptionalFields() throws {
+        let dict: [String: Any] = [
+            "mode": "extend",
+            "extendPreset": "externalRight",
+            "mirrorTarget": "macBook",
+            "rememberThisDisplay": true
+        ]
+        let data = try PropertyListSerialization.data(fromPropertyList: dict, format: .xml, options: 0)
+        let decoded = try PropertyListDecoder().decode(DisplayConfiguration.self, from: data)
+
+        #expect(decoded.mode == .extend)
+        #expect(decoded.extendPreset == .externalRight)
+        #expect(decoded.mirrorTarget == .macBook)
+        #expect(decoded.rememberThisDisplay == true)
+        #expect(decoded.displayName == nil)
+        #expect(decoded.resolutionWidth == nil)
+        #expect(decoded.resolutionHeight == nil)
+        #expect(decoded.screenSizeInches == nil)
+        #expect(decoded.lastConnected == nil)
+    }
+
+    @Test("Round-trip preserves all optional fields when populated")
+    func roundTripAllOptionalFields() throws {
+        let now = Date()
+        let config = DisplayConfiguration(
+            mode: .extend,
+            extendPreset: .externalLeft,
+            mirrorTarget: .external,
+            rememberThisDisplay: false,
+            displayName: "DELL U2723QE",
+            resolutionWidth: 3840,
+            resolutionHeight: 2160,
+            screenSizeInches: 27,
+            lastConnected: now
+        )
+        let data = try PropertyListEncoder().encode(config)
+        let decoded = try PropertyListDecoder().decode(DisplayConfiguration.self, from: data)
+
+        #expect(decoded.displayName == "DELL U2723QE")
+        #expect(decoded.resolutionWidth == 3840)
+        #expect(decoded.resolutionHeight == 2160)
+        #expect(decoded.screenSizeInches == 27)
+        #expect(decoded.lastConnected != nil)
+        let delta = try abs(#require(decoded.lastConnected?.timeIntervalSince(now)))
+        #expect(delta < 1, "lastConnected should round-trip within 1s")
+    }
+
+    @Test("Round-trip with partial optional fields preserves set values and keeps others nil")
+    func roundTripPartialOptionalFields() throws {
+        let config = DisplayConfiguration(
+            mode: .mirror,
+            extendPreset: .externalAbove,
+            mirrorTarget: .macBook,
+            rememberThisDisplay: true,
+            displayName: "LG 5K",
+            screenSizeInches: 27
+        )
+        let data = try PropertyListEncoder().encode(config)
+        let decoded = try PropertyListDecoder().decode(DisplayConfiguration.self, from: data)
+
+        #expect(decoded.displayName == "LG 5K")
+        #expect(decoded.screenSizeInches == 27)
+        #expect(decoded.resolutionWidth == nil)
+        #expect(decoded.resolutionHeight == nil)
     }
 }
