@@ -57,20 +57,8 @@ struct SettingsView: View {
                 }
             }
         }
-        .task {
-            // Toggle debug details when option-clicking while on the Displays tab
-            let stream = AsyncStream<Void> { continuation in
-                let monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
-                    if event.modifierFlags.contains(.option) {
-                        continuation.yield()
-                    }
-                    return event
-                }
-                continuation.onTermination = { _ in
-                    NSEvent.removeMonitor(monitor)
-                }
-            }
-            for await _ in stream where selectedTab == 1 {
+        .onChange(of: selectedTab) { _, newValue in
+            if newValue == 1, NSEvent.modifierFlags.contains(.option) {
                 showDebugDetails.toggle()
             }
         }
