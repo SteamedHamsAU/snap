@@ -177,7 +177,7 @@ struct DisplayConfigurationTests {
             "mode": "extend",
             "extendPreset": "externalRight",
             "mirrorTarget": "macBook",
-            "rememberThisDisplay": true
+            "rememberThisDisplay": true,
         ]
         let data = try PropertyListSerialization.data(fromPropertyList: dict, format: .xml, options: 0)
         let decoded = try PropertyListDecoder().decode(DisplayConfiguration.self, from: data)

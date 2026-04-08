@@ -1,5 +1,5 @@
-@testable import Snap
 import Foundation
+@testable import Snap
 import Testing
 
 @MainActor

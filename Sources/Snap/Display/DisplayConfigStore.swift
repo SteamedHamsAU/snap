@@ -64,7 +64,9 @@ final class DisplayConfigStore {
         let data: Data
         do {
             data = try Data(contentsOf: fileURL)
-        } catch let error as NSError where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError {
+        } catch let error as NSError
+            where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError
+        {
             // No file yet — first launch, not an error
             return
         } catch {

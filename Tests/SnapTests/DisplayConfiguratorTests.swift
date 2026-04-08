@@ -1,6 +1,6 @@
-@testable import Snap
 import CoreGraphics
 import Foundation
+@testable import Snap
 import Testing
 
 // MARK: - Mock
@@ -8,7 +8,7 @@ import Testing
 @MainActor
 final class MockDisplayTransactor: DisplayTransacting {
     // nonisolated(unsafe) so deinit can deallocate without a Sendable warning
-    private nonisolated(unsafe) let dummyRaw: UnsafeMutableRawPointer
+    nonisolated(unsafe) private let dummyRaw: UnsafeMutableRawPointer
     private let dummyRef: CGDisplayConfigRef
 
     var beginShouldSucceed = true
@@ -36,15 +36,15 @@ final class MockDisplayTransactor: DisplayTransacting {
         return beginShouldSucceed ? dummyRef : nil
     }
 
-    func configureOrigin(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, x: Int32, y: Int32) {
+    func configureOrigin(_: CGDisplayConfigRef, display: CGDirectDisplayID, x: Int32, y: Int32) {
         originCalls.append((display: display, x: x, y: y))
     }
 
-    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID) {
+    func configureMirror(_: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID) {
         mirrorCalls.append((display: display, master: master))
     }
 
-    func completeConfiguration(_ configRef: CGDisplayConfigRef) -> Bool {
+    func completeConfiguration(_: CGDisplayConfigRef) -> Bool {
         completeCalled = true
         return completeShouldSucceed
     }
@@ -97,7 +97,7 @@ struct DisplayConfiguratorTests {
         let call = mock.originCalls[0]
         #expect(call.display == externalID)
         #expect(call.x == 1440)
-        #expect(call.y == -270)  // (900/2 - 1440/2) = -270
+        #expect(call.y == -270) // (900/2 - 1440/2) = -270
     }
 
     @Test("Extend left places external to the left, vertically centred")
@@ -110,7 +110,7 @@ struct DisplayConfiguratorTests {
         #expect(mock.originCalls.count == 1)
         let call = mock.originCalls[0]
         #expect(call.display == externalID)
-        #expect(call.x == -2560)  // 0 - 2560
+        #expect(call.x == -2560) // 0 - 2560
         #expect(call.y == -270)
     }
 
@@ -124,8 +124,8 @@ struct DisplayConfiguratorTests {
         #expect(mock.originCalls.count == 1)
         let call = mock.originCalls[0]
         #expect(call.display == externalID)
-        #expect(call.x == -560)   // (1440/2 - 2560/2) = -560
-        #expect(call.y == -1440)  // 0 - 1440
+        #expect(call.x == -560) // (1440/2 - 2560/2) = -560
+        #expect(call.y == -1440) // 0 - 1440
     }
 
     @Test("Extend always unmirrors first before positioning")
