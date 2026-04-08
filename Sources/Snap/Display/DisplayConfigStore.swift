@@ -15,7 +15,19 @@ final class DisplayConfigStore {
     )
 
     convenience init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport: URL
+        do {
+            appSupport = try FileManager.default.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+        } catch {
+            Self.logger.error("Failed to resolve Application Support directory: \(error)")
+            appSupport = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Library/Application Support", isDirectory: true)
+        }
         let snapDir = appSupport.appendingPathComponent("Snap", isDirectory: true)
         self.init(fileURL: snapDir.appendingPathComponent("displays.plist"))
     }
