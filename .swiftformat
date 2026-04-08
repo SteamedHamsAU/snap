@@ -3,5 +3,6 @@
 --allman false
 --wraparguments before-first
 --maxwidth 120
+--commas inline
 --disable redundantSelf
 --modifierorder nonisolated,override,private,public,internal,fileprivate,open,static,class,final,lazy,required,optional,convenience,dynamic,weak,unowned,mutating,nonmutating

@@ -7,11 +7,18 @@ import Testing
 
 @MainActor
 private final class MockDisplayMonitorDelegate: DisplayMonitorDelegate {
-    var connectCalls: [(id: CGDirectDisplayID, uuid: String, name: String, resolution: CGSize)] = []
+    struct ConnectCall {
+        let id: CGDirectDisplayID
+        let uuid: String
+        let name: String
+        let resolution: CGSize
+    }
+
+    var connectCalls: [ConnectCall] = []
     var disconnectCalls: [CGDirectDisplayID] = []
 
     func displayDidConnect(id: CGDirectDisplayID, uuid: String, name: String, resolution: CGSize) {
-        connectCalls.append((id: id, uuid: uuid, name: name, resolution: resolution))
+        connectCalls.append(ConnectCall(id: id, uuid: uuid, name: name, resolution: resolution))
     }
 
     func displayDidDisconnect(id: CGDirectDisplayID) {

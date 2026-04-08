@@ -10,7 +10,7 @@ import os
 protocol DisplayTransacting {
     func beginConfiguration() -> CGDisplayConfigRef?
     func configureOrigin(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, x: Int32, y: Int32)
-    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID)
+    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, primary: CGDirectDisplayID)
     func completeConfiguration(_ configRef: CGDisplayConfigRef) -> Bool
     func displayBounds(_ display: CGDirectDisplayID) -> CGRect
 }
@@ -31,8 +31,8 @@ struct SystemDisplayTransactor: DisplayTransacting {
         CGConfigureDisplayOrigin(configRef, display, x, y)
     }
 
-    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID) {
-        CGConfigureDisplayMirrorOfDisplay(configRef, display, master)
+    func configureMirror(_ configRef: CGDisplayConfigRef, display: CGDirectDisplayID, primary: CGDirectDisplayID) {
+        CGConfigureDisplayMirrorOfDisplay(configRef, display, primary)
     }
 
     func completeConfiguration(_ configRef: CGDisplayConfigRef) -> Bool {
@@ -75,7 +75,7 @@ enum DisplayConfigurator {
         switch config.mode {
         case .extend:
             // Always unmirror first (handles mirror → extend transition)
-            transactor.configureMirror(cfg, display: externalID, master: kCGNullDirectDisplay)
+            transactor.configureMirror(cfg, display: externalID, primary: kCGNullDirectDisplay)
 
             let internalBounds = transactor.displayBounds(primaryID)
             let externalBounds = transactor.displayBounds(externalID)
@@ -103,9 +103,9 @@ enum DisplayConfigurator {
         case .mirror:
             switch config.mirrorTarget {
             case .macBook:
-                transactor.configureMirror(cfg, display: externalID, master: primaryID)
+                transactor.configureMirror(cfg, display: externalID, primary: primaryID)
             case .external:
-                transactor.configureMirror(cfg, display: primaryID, master: externalID)
+                transactor.configureMirror(cfg, display: primaryID, primary: externalID)
             }
             logger.info("Applying mirror target: \(config.mirrorTarget.rawValue)")
         }

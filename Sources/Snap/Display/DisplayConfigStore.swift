@@ -64,12 +64,12 @@ final class DisplayConfigStore {
         let data: Data
         do {
             data = try Data(contentsOf: fileURL)
-        } catch let error as NSError
-            where error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError
-        {
-            // No file yet — first launch, not an error
-            return
         } catch {
+            let nsError = error as NSError
+            if nsError.domain == NSCocoaErrorDomain, nsError.code == NSFileReadNoSuchFileError {
+                // No file yet — first launch, not an error
+                return
+            }
             Self.logger.error("Failed to read config file: \(error)")
             return
         }

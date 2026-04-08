@@ -7,6 +7,17 @@ import Testing
 
 @MainActor
 final class MockDisplayTransactor: DisplayTransacting {
+    struct OriginCall {
+        let display: CGDirectDisplayID
+        let x: Int32
+        let y: Int32
+    }
+
+    struct MirrorCall {
+        let display: CGDirectDisplayID
+        let primary: CGDirectDisplayID
+    }
+
     // nonisolated(unsafe) so deinit can deallocate without a Sendable warning
     nonisolated(unsafe) private let dummyRaw: UnsafeMutableRawPointer
     private let dummyRef: CGDisplayConfigRef
@@ -14,8 +25,8 @@ final class MockDisplayTransactor: DisplayTransacting {
     var beginShouldSucceed = true
     var completeShouldSucceed = true
 
-    var originCalls: [(display: CGDirectDisplayID, x: Int32, y: Int32)] = []
-    var mirrorCalls: [(display: CGDirectDisplayID, master: CGDirectDisplayID)] = []
+    var originCalls: [OriginCall] = []
+    var mirrorCalls: [MirrorCall] = []
     var boundsCalls: [CGDirectDisplayID] = []
     var beginCalled = false
     var completeCalled = false
@@ -37,11 +48,11 @@ final class MockDisplayTransactor: DisplayTransacting {
     }
 
     func configureOrigin(_: CGDisplayConfigRef, display: CGDirectDisplayID, x: Int32, y: Int32) {
-        originCalls.append((display: display, x: x, y: y))
+        originCalls.append(OriginCall(display: display, x: x, y: y))
     }
 
-    func configureMirror(_: CGDisplayConfigRef, display: CGDirectDisplayID, master: CGDirectDisplayID) {
-        mirrorCalls.append((display: display, master: master))
+    func configureMirror(_: CGDisplayConfigRef, display: CGDirectDisplayID, primary: CGDirectDisplayID) {
+        mirrorCalls.append(MirrorCall(display: display, primary: primary))
     }
 
     func completeConfiguration(_: CGDisplayConfigRef) -> Bool {
@@ -138,7 +149,7 @@ struct DisplayConfiguratorTests {
         #expect(mock.mirrorCalls.count == 1)
         let unmirror = mock.mirrorCalls[0]
         #expect(unmirror.display == externalID)
-        #expect(unmirror.master == kCGNullDirectDisplay)
+        #expect(unmirror.primary == kCGNullDirectDisplay)
     }
 
     // MARK: - Mirror
@@ -152,7 +163,7 @@ struct DisplayConfiguratorTests {
 
         #expect(mock.mirrorCalls.count == 1)
         #expect(mock.mirrorCalls[0].display == externalID)
-        #expect(mock.mirrorCalls[0].master == primaryID)
+        #expect(mock.mirrorCalls[0].primary == primaryID)
         #expect(mock.originCalls.isEmpty)
     }
 
@@ -165,7 +176,7 @@ struct DisplayConfiguratorTests {
 
         #expect(mock.mirrorCalls.count == 1)
         #expect(mock.mirrorCalls[0].display == primaryID)
-        #expect(mock.mirrorCalls[0].master == externalID)
+        #expect(mock.mirrorCalls[0].primary == externalID)
         #expect(mock.originCalls.isEmpty)
     }
 
