@@ -14,15 +14,20 @@ struct SettingsView: View {
     @State private var entries: [(uuid: String, config: DisplayConfiguration)] = []
     @State private var settingsWindowBox = WeakWindowBox()
     @State private var settingsWindowID: ObjectIdentifier?
+    @State private var selectedTab = 0
+    @State private var showDebugDetails = false
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             generalTab
                 .tabItem { Label("General", systemImage: "gearshape") }
+                .tag(0)
             displaysTab
                 .tabItem { Label("Displays", systemImage: "display") }
+                .tag(1)
             aboutTab
                 .tabItem { Label("About", systemImage: "info.circle") }
+                .tag(2)
         }
         .frame(width: 460, height: 520)
         .onAppear {
@@ -50,6 +55,11 @@ struct SettingsView: View {
                 await MainActor.run {
                     entries = configStore.allEntries()
                 }
+            }
+        }
+        .onChange(of: selectedTab) { _, newValue in
+            if newValue == 1, NSEvent.modifierFlags.contains(.option) {
+                showDebugDetails.toggle()
             }
         }
     }
@@ -122,6 +132,24 @@ struct SettingsView: View {
                                 }
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
+
+                                if showDebugDetails {
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(entry.uuid)
+                                        if let date = entry.config.lastConnected {
+                                            let stamp = date.formatted(
+                                                date: .abbreviated,
+                                                time: .shortened
+                                            )
+                                            Text("Last connected: \(stamp)")
+                                        } else {
+                                            Text("Last connected: unknown")
+                                        }
+                                    }
+                                    .font(.system(size: 10, design: .monospaced))
+                                    .foregroundStyle(.tertiary)
+                                    .padding(.top, 2)
+                                }
                             }
 
                             Spacer()

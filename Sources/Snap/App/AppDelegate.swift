@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsController: SettingsWindowController?
     private let configStore = DisplayConfigStore()
     private var currentDisplay: ConnectedDisplay?
+    private var pendingToastTask: Task<Void, Never>?
 
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
@@ -26,6 +27,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     )
 
     func applicationDidFinishLaunching(_: Notification) {
+        // Skip UI and hardware setup when running as a unit test host
+        guard !isRunningTests else {
+            Self.logger.notice("Snap launched as test host — skipping UI setup")
+            return
+        }
+
         // Menu bar
         let menuBar = MenuBarController(configStore: configStore)
         menuBar.onRetriggerPrompt = { [weak self] in
@@ -67,6 +74,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_: Notification) {
         displayMonitor?.stopMonitoring()
+        promptController?.dismiss()
+        toastController?.dismiss()
+        pendingToastTask?.cancel()
     }
 
     // MARK: - First-run launch at login
@@ -133,9 +143,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         name: String,
         resolution: CGSize
     ) {
+        // Guard against stale prompts — the display may have gone offline
+        // (e.g. phantom during sleep/wake) since the prompt was shown.
+        guard isDisplayOnline(displayID) else {
+            Self.logger.warning("Display \(displayID) [\(uuid)] is offline — skipping apply and save")
+            return
+        }
+        if let monitor = displayMonitor {
+            let currentUUID = monitor.displayUUID(for: displayID)
+            guard currentUUID == uuid else {
+                Self.logger.warning(
+                    "Display \(displayID) UUID changed (\(uuid) → \(currentUUID)) — skipping apply and save"
+                )
+                return
+            }
+        }
+
         DisplayConfigurator.apply(config, primaryID: CGMainDisplayID(), externalID: displayID)
 
-        // Always save the config so the display appears in Settings.
+        // Save the config so the display appears in Settings.
         // rememberThisDisplay controls whether to auto-apply silently next time.
         var savedConfig = config
         savedConfig.displayName = name
@@ -148,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             physicalSize.width * physicalSize.width + physicalSize.height * physicalSize.height
         ) / 25.4
         savedConfig.screenSizeInches = Int(diagonalInches.rounded())
+        savedConfig.lastConnected = Date()
         configStore.save(savedConfig, for: uuid)
         Self.logger.notice("Saved config for \(name) [\(uuid)] (auto-apply: \(config.rememberThisDisplay))")
 
@@ -155,6 +182,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             id: displayID, uuid: uuid, name: name, resolution: resolution, appliedConfig: config
         )
         menuBarController?.updateCurrentDisplay(currentDisplay)
+    }
+
+    /// Checks whether the given display ID is in the current online display list.
+    private func isDisplayOnline(_ displayID: CGDirectDisplayID) -> Bool {
+        var count: UInt32 = 0
+        guard CGGetOnlineDisplayList(0, nil, &count) == .success, count > 0 else {
+            return false
+        }
+        var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+        guard CGGetOnlineDisplayList(count, &ids, &count) == .success else {
+            return false
+        }
+        return ids.contains(displayID)
+    }
+
+    /// Detects whether the app was launched as a unit test host.
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestBundlePath"] != nil
     }
 
     private func retriggerPrompt() {
@@ -215,11 +260,20 @@ extension AppDelegate: DisplayMonitorDelegate {
     ) {
         Self.logger.notice("Display connected: \(name) [\(uuid)]")
 
+        // Dismiss any stale prompt (e.g. from a phantom display during sleep/wake)
+        promptController?.dismiss()
+
         if let savedConfig = configStore.configuration(for: uuid), savedConfig.rememberThisDisplay {
             // Known display with auto-apply — apply silently
             DisplayConfigurator.apply(savedConfig, primaryID: CGMainDisplayID(), externalID: id)
+
+            // Update lastConnected timestamp
+            var updatedConfig = savedConfig
+            updatedConfig.lastConnected = Date()
+            configStore.save(updatedConfig, for: uuid)
+
             currentDisplay = ConnectedDisplay(
-                id: id, uuid: uuid, name: name, resolution: resolution, appliedConfig: savedConfig
+                id: id, uuid: uuid, name: name, resolution: resolution, appliedConfig: updatedConfig
             )
             menuBarController?.updateCurrentDisplay(currentDisplay)
 
@@ -240,8 +294,10 @@ extension AppDelegate: DisplayMonitorDelegate {
             let showToast = UserDefaults.standard.object(forKey: "showToastOnKnownDisplay") as? Bool ?? true
             if showToast {
                 let toastMessage = "\(name) — \(modeLabel) applied"
-                Task { @MainActor [weak self] in
+                pendingToastTask?.cancel()
+                pendingToastTask = Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .seconds(1.5))
+                    guard !Task.isCancelled else { return }
                     Self.logger.notice("Showing toast: \(toastMessage)")
                     self?.toastController?.show(
                         message: toastMessage,
@@ -263,6 +319,9 @@ extension AppDelegate: DisplayMonitorDelegate {
     }
 
     func displayDidDisconnect(id: CGDirectDisplayID) {
+        // Dismiss any open prompt — it's stale if the display is gone
+        promptController?.dismiss()
+
         guard currentDisplay?.id == id else { return }
         let name = currentDisplay?.name ?? "unknown"
         Self.logger.notice("Display disconnected: \(name) (ID \(id))")

@@ -4,6 +4,9 @@ import Foundation
 /// so the prompt can pre-select them on next open.
 ///
 /// See snap-spec Section 3 — Last-used preset.
+///
+/// Marked `@unchecked Sendable` because `UserDefaults` is thread-safe and
+/// the `defaults` instance is immutable after init.
 struct PresetDefaults: @unchecked Sendable {
     // MARK: - Keys
 

@@ -20,6 +20,10 @@ protocol DisplayMonitorDelegate: AnyObject {
 ///
 /// The CGDisplay callback arrives on an arbitrary thread — this class dispatches
 /// all delegate calls to `@MainActor`.
+///
+/// Marked `@unchecked Sendable` because the C callback bridge requires passing
+/// `self` as an opaque pointer across thread boundaries. Thread safety is
+/// maintained by dispatching all mutable state access to `@MainActor` via Task.
 final class DisplayMonitor: @unchecked Sendable {
     @MainActor weak var delegate: DisplayMonitorDelegate?
 
@@ -27,6 +31,18 @@ final class DisplayMonitor: @unchecked Sendable {
         subsystem: Bundle.main.bundleIdentifier ?? "au.steamedhams.snap",
         category: "DisplayMonitor"
     )
+
+    /// Tracks pending debounce tasks per display ID so rapid events are coalesced.
+    @MainActor private var pendingEvents: [CGDirectDisplayID: Task<Void, Never>] = [:]
+
+    /// How long to wait for additional events before dispatching.
+    private let debounceInterval: Duration
+
+    /// Returns whether a display ID is the built-in panel. Injectable for testing.
+    private let isBuiltIn: @Sendable (CGDirectDisplayID) -> Bool
+
+    /// Returns whether a display ID is currently online. Injectable for testing.
+    private let isOnline: @Sendable (CGDirectDisplayID) -> Bool
 
     /// The C callback for `CGDisplayRegisterReconfigurationCallback`.
     /// Bridges to the Swift instance via an `Unmanaged` pointer in `userInfo`.
@@ -36,7 +52,25 @@ final class DisplayMonitor: @unchecked Sendable {
         monitor.handleReconfiguration(displayID: displayID, flags: flags)
     }
 
-    init() {}
+    init(
+        debounceInterval: Duration = .milliseconds(500),
+        isBuiltIn: @escaping @Sendable (CGDirectDisplayID) -> Bool = { CGDisplayIsBuiltin($0) != 0 },
+        isOnline: @escaping @Sendable (CGDirectDisplayID) -> Bool = { displayID in
+            var count: UInt32 = 0
+            guard CGGetOnlineDisplayList(0, nil, &count) == .success, count > 0 else {
+                return false
+            }
+            var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
+            guard CGGetOnlineDisplayList(count, &ids, &count) == .success else {
+                return false
+            }
+            return ids.contains(displayID)
+        }
+    ) {
+        self.debounceInterval = debounceInterval
+        self.isBuiltIn = isBuiltIn
+        self.isOnline = isOnline
+    }
 
     // MARK: - Monitoring lifecycle
 
@@ -58,6 +92,11 @@ final class DisplayMonitor: @unchecked Sendable {
         Self.logger.notice("Display monitoring stopped")
     }
 
+    deinit {
+        let pointer = Unmanaged.passUnretained(self).toOpaque()
+        CGDisplayRemoveReconfigurationCallback(Self.reconfigurationCallback, pointer)
+    }
+
     // MARK: - Reconfiguration handler
 
     func handleReconfiguration(displayID: CGDirectDisplayID, flags: CGDisplayChangeSummaryFlags) {
@@ -68,12 +107,12 @@ final class DisplayMonitor: @unchecked Sendable {
             "Reconfiguration event: display=\(displayID) flags=\(flags.rawValue) add=\(flags.contains(.addFlag)) builtin=\(CGDisplayIsBuiltin(displayID)) mirror=\(CGDisplayIsInMirrorSet(displayID))"
         )
 
-        guard !CGDisplayIsBuiltin(displayID).boolValue else { return }
+        guard !isBuiltIn(displayID) else { return }
 
         if flags.contains(.removeFlag) {
             Self.logger.notice("External display disconnected: \(displayID)")
-            Task { @MainActor in
-                self.delegate?.displayDidDisconnect(id: displayID)
+            dispatchDebounced(displayID: displayID) { monitor in
+                monitor.delegate?.displayDidDisconnect(id: displayID)
             }
             return
         }
@@ -83,22 +122,63 @@ final class DisplayMonitor: @unchecked Sendable {
         // Don't filter on mirror set here — macOS may briefly mirror during reconfiguration.
         // The display might already be in a mirror set if macOS auto-mirrors on connect.
 
-        let uuid = displayUUID(for: displayID)
+        let capturedUUID = displayUUID(for: displayID)
         let bounds = CGDisplayBounds(displayID)
         let resolution = bounds.size
 
         Self.logger.notice(
-            "External display connected: [\(uuid)] \(Int(resolution.width))×\(Int(resolution.height))"
+            "External display connected: [\(capturedUUID)] \(Int(resolution.width))×\(Int(resolution.height))"
         )
 
-        Task { @MainActor in
-            let name = self.displayName(for: displayID)
-            self.delegate?.displayDidConnect(
+        let isOnline = self.isOnline
+        dispatchDebounced(displayID: displayID) { monitor in
+            // Post-debounce validation: verify the display is still present and
+            // hasn't been replaced by a different physical display reusing the ID.
+            guard isOnline(displayID) else {
+                Self.logger.notice(
+                    "Display \(displayID) went offline during debounce — dropping connect event"
+                )
+                return
+            }
+            let currentUUID = monitor.displayUUID(for: displayID)
+            guard currentUUID == capturedUUID else {
+                Self.logger.notice(
+                    "Display \(displayID) UUID changed during debounce (\(capturedUUID) → \(currentUUID)) — dropping"
+                )
+                return
+            }
+
+            // Re-read metadata post-debounce — values may have settled
+            let name = monitor.displayName(for: displayID)
+            let settledBounds = CGDisplayBounds(displayID)
+            monitor.delegate?.displayDidConnect(
                 id: displayID,
-                uuid: uuid,
+                uuid: currentUUID,
                 name: name,
-                resolution: resolution
+                resolution: settledBounds.size
             )
+        }
+    }
+
+    /// Debounces rapid events for the same display ID.
+    ///
+    /// macOS can fire multiple reconfiguration callbacks for a single physical
+    /// plug event. This coalesces them so only the last event within the
+    /// debounce window is dispatched to the delegate.
+    private func dispatchDebounced(
+        displayID: CGDirectDisplayID,
+        action: @escaping @MainActor (DisplayMonitor) -> Void
+    ) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.pendingEvents[displayID]?.cancel()
+            self.pendingEvents[displayID] = Task { @MainActor [weak self] in
+                guard let self else { return }
+                try? await Task.sleep(for: self.debounceInterval)
+                guard !Task.isCancelled else { return }
+                self.pendingEvents.removeValue(forKey: displayID)
+                action(self)
+            }
         }
     }
 
