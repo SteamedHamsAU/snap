@@ -184,4 +184,20 @@ struct DisplayMonitorDebounceTests {
 
         #expect(delegate.disconnectCalls.count == 1, "Disconnect should fire regardless of online status")
     }
+
+    // MARK: - Stop monitoring
+
+    @Test("stopMonitoring cancels pending debounce tasks")
+    func stopCancelsPendingEvents() async throws {
+        let (monitor, delegate) = makeSUT()
+
+        monitor.handleReconfiguration(displayID: fakeDisplayA, flags: .addFlag)
+        monitor.stopMonitoring()
+
+        // Let the MainActor task that cancels pending events execute,
+        // then wait past the debounce interval.
+        try await Task.sleep(for: debounceWait)
+
+        #expect(delegate.connectCalls.isEmpty, "Pending event should have been cancelled by stopMonitoring")
+    }
 }
