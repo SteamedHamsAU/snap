@@ -184,4 +184,35 @@ struct DisplayMonitorDebounceTests {
 
         #expect(delegate.disconnectCalls.count == 1, "Disconnect should fire regardless of online status")
     }
+
+    // MARK: - Reconfiguration (add + remove)
+
+    @Test("Reconfiguration with both add and remove flags treats as connect, not disconnect")
+    func reconfigurationTreatedAsConnect() async throws {
+        let (monitor, delegate) = makeSUT()
+
+        // macOS sends both flags during mirror/unmirror transitions
+        let combined = CGDisplayChangeSummaryFlags(
+            rawValue: CGDisplayChangeSummaryFlags.addFlag.rawValue
+                | CGDisplayChangeSummaryFlags.removeFlag.rawValue
+        )
+        monitor.handleReconfiguration(displayID: fakeDisplayA, flags: combined)
+
+        try await Task.sleep(for: debounceWait)
+
+        #expect(delegate.connectCalls.count == 1, "Should treat as connect")
+        #expect(delegate.disconnectCalls.isEmpty, "Should NOT treat as disconnect")
+    }
+
+    @Test("Remove-only flag still triggers disconnect")
+    func removeOnlyStillDisconnects() async throws {
+        let (monitor, delegate) = makeSUT()
+
+        monitor.handleReconfiguration(displayID: fakeDisplayA, flags: .removeFlag)
+
+        try await Task.sleep(for: debounceWait)
+
+        #expect(delegate.disconnectCalls.count == 1)
+        #expect(delegate.connectCalls.isEmpty)
+    }
 }
