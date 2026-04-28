@@ -109,6 +109,14 @@ final class DisplayMonitor: @unchecked Sendable {
 
         guard !isBuiltIn(displayID) else { return }
 
+        // When both removeFlag and addFlag are present, macOS is reconfiguring
+        // the display (e.g. mirror/unmirror transition) — not a physical disconnect.
+        // Suppress both connect and disconnect to avoid re-applying config in a loop.
+        if flags.contains(.removeFlag), flags.contains(.addFlag) {
+            Self.logger.notice("Display \(displayID) reconfigured (add+remove) — no action needed")
+            return
+        }
+
         if flags.contains(.removeFlag) {
             Self.logger.notice("External display disconnected: \(displayID)")
             dispatchDebounced(displayID: displayID) { monitor in
