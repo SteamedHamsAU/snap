@@ -74,8 +74,20 @@ enum DisplayConfigurator {
 
         switch config.mode {
         case .extend:
-            // Always unmirror first (handles mirror → extend transition)
+            // Transaction 1: unmirror (idempotent if not mirrored).
+            // Must commit before reading bounds so they reflect the
+            // independent (non-mirrored) display geometry.
             transactor.configureMirror(cfg, display: externalID, primary: kCGNullDirectDisplay)
+            if !transactor.completeConfiguration(cfg) {
+                logger.error("completeConfiguration failed (unmirror)")
+                return
+            }
+
+            // Transaction 2: position using settled post-unmirror bounds
+            guard let positionCfg = transactor.beginConfiguration() else {
+                logger.error("beginConfiguration failed (position)")
+                return
+            }
 
             let internalBounds = transactor.displayBounds(primaryID)
             let externalBounds = transactor.displayBounds(externalID)
@@ -97,8 +109,14 @@ enum DisplayConfigurator {
                 )
             }
 
-            transactor.configureOrigin(cfg, display: externalID, x: Int32(origin.x), y: Int32(origin.y))
+            transactor.configureOrigin(positionCfg, display: externalID, x: Int32(origin.x), y: Int32(origin.y))
             logger.info("Applying extend preset: \(config.extendPreset.rawValue)")
+
+            if transactor.completeConfiguration(positionCfg) {
+                logger.info("Display configuration applied successfully")
+            } else {
+                logger.error("completeConfiguration failed")
+            }
 
         case .mirror:
             switch config.mirrorTarget {
@@ -108,12 +126,12 @@ enum DisplayConfigurator {
                 transactor.configureMirror(cfg, display: primaryID, primary: externalID)
             }
             logger.info("Applying mirror target: \(config.mirrorTarget.rawValue)")
-        }
 
-        if transactor.completeConfiguration(cfg) {
-            logger.info("Display configuration applied successfully")
-        } else {
-            logger.error("completeConfiguration failed")
+            if transactor.completeConfiguration(cfg) {
+                logger.info("Display configuration applied successfully")
+            } else {
+                logger.error("completeConfiguration failed")
+            }
         }
     }
 }

@@ -195,7 +195,7 @@ struct DisplayConfiguratorTests {
         #expect(!mock.completeCalled)
     }
 
-    @Test("Complete failure still calls complete (logs error)")
+    @Test("Complete failure aborts extend before positioning")
     func completeFailure() {
         let mock = makeTransactor()
         mock.completeShouldSucceed = false
@@ -204,7 +204,7 @@ struct DisplayConfiguratorTests {
         DisplayConfigurator.apply(config, primaryID: primaryID, externalID: externalID, transactor: mock)
 
         #expect(mock.completeCalled)
-        #expect(mock.originCalls.count == 1)
+        #expect(mock.originCalls.isEmpty, "Unmirror failed — positioning should be skipped")
     }
 
     @Test("Successful apply calls complete")
