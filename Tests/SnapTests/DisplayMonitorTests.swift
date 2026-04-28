@@ -187,8 +187,8 @@ struct DisplayMonitorDebounceTests {
 
     // MARK: - Reconfiguration (add + remove)
 
-    @Test("Reconfiguration with both add and remove flags treats as connect, not disconnect")
-    func reconfigurationTreatedAsConnect() async throws {
+    @Test("Reconfiguration with both add and remove flags is a no-op")
+    func reconfigurationIsNoOp() async throws {
         let (monitor, delegate) = makeSUT()
 
         // macOS sends both flags during mirror/unmirror transitions
@@ -200,7 +200,7 @@ struct DisplayMonitorDebounceTests {
 
         try await Task.sleep(for: debounceWait)
 
-        #expect(delegate.connectCalls.count == 1, "Should treat as connect")
+        #expect(delegate.connectCalls.isEmpty, "Should NOT treat as connect")
         #expect(delegate.disconnectCalls.isEmpty, "Should NOT treat as disconnect")
     }
 
